@@ -1,3 +1,5 @@
+//! Utilities for working with frunk.
+
 use frunk::{
     hlist::{HMappable, HZippable},
     prelude::HList,
