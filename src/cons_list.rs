@@ -2,6 +2,8 @@ use std::{marker::PhantomData, mem::ManuallyDrop};
 
 #[repr(C)]
 pub struct Cons<T, Tail>(ManuallyDrop<T>, Tail);
+
+#[repr(C)]
 pub struct Nil<T>(PhantomData<T>);
 
 impl<T, Tail> Drop for Cons<T, Tail> {
