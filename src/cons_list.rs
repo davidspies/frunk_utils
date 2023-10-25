@@ -1,18 +1,10 @@
 use std::{iter::FusedIterator, marker::PhantomData, mem::ManuallyDrop, ops::Range};
 
 #[repr(C)]
-pub struct Cons<T, Tail>(ManuallyDrop<T>, Tail);
+pub struct Cons<T, Tail>(T, Tail);
 
 #[repr(C)]
 pub struct Nil<T>(PhantomData<T>);
-
-impl<T, Tail> Drop for Cons<T, Tail> {
-    fn drop(&mut self) {
-        unsafe {
-            ManuallyDrop::drop(&mut self.0);
-        }
-    }
-}
 
 pub trait ConsListT<T> {
     const LEN: usize;
@@ -40,10 +32,9 @@ impl<T, Ts: ConsListT<T>> ConsListT<T> for Cons<T, Ts> {
     unsafe fn take_unchecked(&mut self, i: usize) -> T {
         debug_assert!(i < Self::LEN, "Index out of bounds");
         let head = self as *mut Self;
-        let head = head.cast::<ManuallyDrop<T>>();
+        let head = head.cast::<T>();
         let elem = head.add(i);
-        let elem = &mut *elem;
-        ManuallyDrop::take(elem)
+        std::ptr::read(elem)
     }
 }
 
@@ -65,7 +56,7 @@ impl<T, Ts: ConsListT<T>> ConsList<T, Cons<T, Ts>> {
     pub fn cons(head: T, tail: ConsList<T, Ts>) -> ConsList<T, Cons<T, Ts>> {
         let ConsList { list: tail, marker } = tail;
         ConsList {
-            list: Cons(ManuallyDrop::new(head), tail),
+            list: Cons(head, tail),
             marker,
         }
     }
