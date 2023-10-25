@@ -1,4 +1,4 @@
-use std::{marker::PhantomData, mem::ManuallyDrop};
+use std::{iter::FusedIterator, marker::PhantomData, mem::ManuallyDrop, ops::Range};
 
 #[repr(C)]
 pub struct Cons<T, Tail>(ManuallyDrop<T>, Tail);
@@ -52,14 +52,6 @@ pub struct ConsList<T, Ts: ConsListT<T>> {
     marker: PhantomData<T>,
 }
 
-impl<T, Ts: ConsListT<T>> ConsList<T, Ts> {
-    pub fn into_iter(self) -> impl Iterator<Item = T> + DoubleEndedIterator + ExactSizeIterator {
-        let ConsList { list, .. } = self;
-        let mut list = ManuallyDrop::new(list);
-        FullyConsumeOnDrop((0..Ts::LEN).map(move |i| unsafe { list.take_unchecked(i) }))
-    }
-}
-
 impl<T> ConsList<T, Nil<T>> {
     pub fn nil() -> ConsList<T, Nil<T>> {
         Self {
@@ -79,31 +71,70 @@ impl<T, Ts: ConsListT<T>> ConsList<T, Cons<T, Ts>> {
     }
 }
 
-pub struct FullyConsumeOnDrop<I: Iterator>(I);
+impl<T, Ts: ConsListT<T>> IntoIterator for ConsList<T, Ts> {
+    type Item = T;
+    type IntoIter = Iter<T, Ts>;
 
-impl<I: Iterator> Iterator for FullyConsumeOnDrop<I> {
-    type Item = I::Item;
+    fn into_iter(self) -> Self::IntoIter {
+        let ConsList { list, .. } = self;
+        Iter::new(list)
+    }
+}
+
+pub struct Iter<T, Ts: ConsListT<T>> {
+    list: ManuallyDrop<Ts>,
+    alive: Range<usize>,
+    marker: PhantomData<T>,
+}
+
+impl<T, Ts: ConsListT<T>> Iter<T, Ts> {
+    fn new(list: Ts) -> Self {
+        Iter {
+            list: ManuallyDrop::new(list),
+            alive: 0..Ts::LEN,
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T, Ts: ConsListT<T>> Iterator for Iter<T, Ts> {
+    type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
+        self.alive
+            .next()
+            .map(|idx| unsafe { self.list.take_unchecked(idx) })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
+        let len = self.len();
+        (len, Some(len))
+    }
+
+    fn count(self) -> usize {
+        self.len()
     }
 }
 
-impl<I: DoubleEndedIterator> DoubleEndedIterator for FullyConsumeOnDrop<I> {
+impl<T, Ts: ConsListT<T>> DoubleEndedIterator for Iter<T, Ts> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.0.next_back()
+        self.alive
+            .next_back()
+            .map(|idx| unsafe { self.list.take_unchecked(idx) })
     }
 }
 
-impl<I: ExactSizeIterator> ExactSizeIterator for FullyConsumeOnDrop<I> {}
+impl<T, Ts: ConsListT<T>> ExactSizeIterator for Iter<T, Ts> {
+    fn len(&self) -> usize {
+        self.alive.len()
+    }
+}
 
-impl<I: Iterator> Drop for FullyConsumeOnDrop<I> {
+impl<T, Ts: ConsListT<T>> FusedIterator for Iter<T, Ts> {}
+
+impl<T, Ts: ConsListT<T>> Drop for Iter<T, Ts> {
     fn drop(&mut self) {
-        for _ in &mut self.0 {}
+        for _ in self {}
     }
 }
 
