@@ -38,7 +38,12 @@ impl<T, Ts: ConsListT<T>> ConsListT<T> for Cons<T, Ts> {
     const LEN: usize = 1 + Ts::LEN;
 
     unsafe fn take_unchecked(&mut self, i: usize) -> T {
-        ManuallyDrop::take(&mut *(&mut self.0 as *mut ManuallyDrop<T>).add(i))
+        debug_assert!(i < Self::LEN, "Index out of bounds");
+        let head = self as *mut Self;
+        let head = head.cast::<ManuallyDrop<T>>();
+        let elem = head.add(i);
+        let elem = &mut *elem;
+        ManuallyDrop::take(elem)
     }
 }
 
