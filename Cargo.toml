@@ -1,5 +1,6 @@
 [package]
 name = "frunk_utils"
+authors = ["David Spies <dnspies@gmail.com>"]
 version = "0.1.0"
 edition = "2021"
 description = "Utilities for working with frunk."
