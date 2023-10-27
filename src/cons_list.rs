@@ -1,16 +1,10 @@
-use std::{marker::PhantomData, mem::ManuallyDrop};
+use std::{iter::FusedIterator, marker::PhantomData, mem::ManuallyDrop, ops::Range};
 
 #[repr(C)]
-pub struct Cons<T, Tail>(ManuallyDrop<T>, Tail);
-pub struct Nil<T>(PhantomData<T>);
+pub struct Cons<T, Tail>(T, Tail);
 
-impl<T, Tail> Drop for Cons<T, Tail> {
-    fn drop(&mut self) {
-        unsafe {
-            ManuallyDrop::drop(&mut self.0);
-        }
-    }
-}
+#[repr(C)]
+pub struct Nil<T>(PhantomData<T>);
 
 pub trait ConsListT<T> {
     const LEN: usize;
@@ -36,21 +30,17 @@ impl<T, Ts: ConsListT<T>> ConsListT<T> for Cons<T, Ts> {
     const LEN: usize = 1 + Ts::LEN;
 
     unsafe fn take_unchecked(&mut self, i: usize) -> T {
-        ManuallyDrop::take(&mut *(&mut self.0 as *mut ManuallyDrop<T>).add(i))
+        debug_assert!(i < Self::LEN, "Index out of bounds");
+        let head = self as *mut Self;
+        let head = head.cast::<T>();
+        let elem = head.add(i);
+        std::ptr::read(elem)
     }
 }
 
 pub struct ConsList<T, Ts: ConsListT<T>> {
     list: Ts,
     marker: PhantomData<T>,
-}
-
-impl<T, Ts: ConsListT<T>> ConsList<T, Ts> {
-    pub fn into_iter(self) -> impl Iterator<Item = T> + DoubleEndedIterator + ExactSizeIterator {
-        let ConsList { list, .. } = self;
-        let mut list = ManuallyDrop::new(list);
-        FullyConsumeOnDrop((0..Ts::LEN).map(move |i| unsafe { list.take_unchecked(i) }))
-    }
 }
 
 impl<T> ConsList<T, Nil<T>> {
@@ -66,95 +56,192 @@ impl<T, Ts: ConsListT<T>> ConsList<T, Cons<T, Ts>> {
     pub fn cons(head: T, tail: ConsList<T, Ts>) -> ConsList<T, Cons<T, Ts>> {
         let ConsList { list: tail, marker } = tail;
         ConsList {
-            list: Cons(ManuallyDrop::new(head), tail),
+            list: Cons(head, tail),
             marker,
         }
     }
 }
 
-pub struct FullyConsumeOnDrop<I: Iterator>(I);
+impl<T, Ts: ConsListT<T>> IntoIterator for ConsList<T, Ts> {
+    type Item = T;
+    type IntoIter = Iter<T, Ts>;
 
-impl<I: Iterator> Iterator for FullyConsumeOnDrop<I> {
-    type Item = I::Item;
+    fn into_iter(self) -> Self::IntoIter {
+        let ConsList { list, .. } = self;
+        Iter::new(list)
+    }
+}
+
+pub struct Iter<T, Ts: ConsListT<T>> {
+    list: ManuallyDrop<Ts>,
+    alive: Range<usize>,
+    marker: PhantomData<T>,
+}
+
+impl<T, Ts: ConsListT<T>> Iter<T, Ts> {
+    fn new(list: Ts) -> Self {
+        Iter {
+            list: ManuallyDrop::new(list),
+            alive: 0..Ts::LEN,
+            marker: PhantomData,
+        }
+    }
+}
+
+impl<T, Ts: ConsListT<T>> Iterator for Iter<T, Ts> {
+    type Item = T;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.0.next()
+        self.alive
+            .next()
+            .map(|idx| unsafe { self.list.take_unchecked(idx) })
     }
 
     fn size_hint(&self) -> (usize, Option<usize>) {
-        self.0.size_hint()
+        let len = self.len();
+        (len, Some(len))
+    }
+
+    fn count(self) -> usize {
+        self.len()
     }
 }
 
-impl<I: DoubleEndedIterator> DoubleEndedIterator for FullyConsumeOnDrop<I> {
+impl<T, Ts: ConsListT<T>> DoubleEndedIterator for Iter<T, Ts> {
     fn next_back(&mut self) -> Option<Self::Item> {
-        self.0.next_back()
+        self.alive
+            .next_back()
+            .map(|idx| unsafe { self.list.take_unchecked(idx) })
     }
 }
 
-impl<I: ExactSizeIterator> ExactSizeIterator for FullyConsumeOnDrop<I> {}
+impl<T, Ts: ConsListT<T>> ExactSizeIterator for Iter<T, Ts> {
+    fn len(&self) -> usize {
+        self.alive.len()
+    }
+}
 
-impl<I: Iterator> Drop for FullyConsumeOnDrop<I> {
+impl<T, Ts: ConsListT<T>> FusedIterator for Iter<T, Ts> {}
+
+impl<T, Ts: ConsListT<T>> Drop for Iter<T, Ts> {
     fn drop(&mut self) {
-        for _ in &mut self.0 {}
+        for _ in self {}
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use std::{cell::Cell, rc::Rc};
+    use super::*;
 
-    use super::ConsList;
+    use core::sync::atomic::{AtomicUsize, Ordering};
 
     #[test]
-    fn collect() {
+    fn full_consume() {
         let list = ConsList::cons(1, ConsList::cons(2, ConsList::cons(3, ConsList::nil())));
         assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![1, 2, 3]);
     }
 
     #[test]
     fn partial_consume() {
-        struct DropSignaller {
-            value: i32,
-            dropped: Rc<Cell<bool>>,
-        }
-        impl Drop for DropSignaller {
-            fn drop(&mut self) {
-                self.dropped.set(true)
+        let list = ConsList::cons(1, ConsList::cons(2, ConsList::cons(3, ConsList::nil())));
+        let mut iter = list.into_iter();
+        assert_eq!(iter.next(), Some(1));
+        drop(iter);
+    }
+
+    #[test]
+    fn drop_behavior() {
+        static NUM_ALLOC: AtomicUsize = AtomicUsize::new(0);
+
+        #[derive(Clone)]
+        struct Bomb(bool);
+
+        impl Bomb {
+            fn inert() -> Self {
+                let mut bomb = Self::default();
+                bomb.disarm();
+                bomb
+            }
+
+            fn disarm(&mut self) {
+                self.0 = false;
             }
         }
-        let drop_signals = vec![
-            Rc::new(Cell::new(false)),
-            Rc::new(Cell::new(false)),
-            Rc::new(Cell::new(false)),
-        ];
 
-        let list = ConsList::cons(
-            DropSignaller {
-                value: 1,
-                dropped: drop_signals[0].clone(),
-            },
-            ConsList::cons(
-                DropSignaller {
-                    value: 2,
-                    dropped: drop_signals[1].clone(),
-                },
+        impl Default for Bomb {
+            fn default() -> Self {
+                NUM_ALLOC.fetch_add(1, Ordering::SeqCst);
+                Bomb(true)
+            }
+        }
+
+        impl Drop for Bomb {
+            fn drop(&mut self) {
+                if self.0 {
+                    panic!("failed to disarm");
+                }
+                NUM_ALLOC.fetch_sub(1, Ordering::SeqCst);
+            }
+        }
+
+        {
+            let bombs = ConsList::cons(
+                Bomb::default(),
                 ConsList::cons(
-                    DropSignaller {
-                        value: 3,
-                        dropped: drop_signals[2].clone(),
-                    },
-                    ConsList::nil(),
+                    Bomb::default(),
+                    ConsList::cons(Bomb::default(), ConsList::nil()),
                 ),
-            ),
-        );
-        let mut iter = list.into_iter();
-        assert_eq!(iter.next().unwrap().value, 1);
-        assert!(drop_signals[0].get());
-        assert!(!drop_signals[1].get());
-        assert!(!drop_signals[2].get());
-        drop(iter);
-        assert!(drop_signals[1].get());
-        assert!(drop_signals[2].get());
+            );
+            let mut bombs = bombs.into_iter().collect::<Vec<_>>();
+            for bomb in &mut bombs {
+                bomb.disarm();
+            }
+        }
+        assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 0);
+
+        {
+            let list = ConsList::cons(
+                Bomb::default(),
+                ConsList::cons(
+                    Bomb::default(),
+                    ConsList::cons(Bomb::default(), ConsList::nil()),
+                ),
+            );
+            assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 3);
+            let mut bombs = list.into_iter();
+            bombs.next().unwrap().disarm();
+            assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 2);
+            bombs.next().unwrap().disarm();
+            assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 1);
+            bombs.next().unwrap().disarm();
+        }
+        assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 0);
+
+        {
+            let list = ConsList::cons(
+                Bomb::default(),
+                ConsList::cons(
+                    Bomb::inert(),
+                    ConsList::cons(Bomb::inert(), ConsList::nil()),
+                ),
+            );
+            assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 3);
+            let mut bombs = list.into_iter();
+            bombs.next().unwrap().disarm();
+            assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 2);
+        }
+        assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 0);
+
+        {
+            let _list = ConsList::cons(
+                Bomb::inert(),
+                ConsList::cons(
+                    Bomb::inert(),
+                    ConsList::cons(Bomb::inert(), ConsList::nil()),
+                ),
+            );
+            assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 3);
+        }
+        assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 0);
     }
 }
