@@ -133,7 +133,7 @@ impl<T, Ts: ConsListT<T>> Drop for Iter<T, Ts> {
 mod tests {
     use super::*;
 
-    use core::sync::atomic::{AtomicUsize, Ordering};
+    use core::sync::atomic::{AtomicIsize, Ordering};
 
     #[test]
     fn full_consume() {
@@ -151,7 +151,7 @@ mod tests {
 
     #[test]
     fn drop_behavior() {
-        static NUM_ALLOC: AtomicUsize = AtomicUsize::new(0);
+        static NUM_ALLOC: AtomicIsize = AtomicIsize::new(0);
 
         #[derive(Clone)]
         struct Bomb(bool);
