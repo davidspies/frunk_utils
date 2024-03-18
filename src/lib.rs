@@ -21,6 +21,14 @@ pub trait Func<I> {
     fn call(&mut self, i: I) -> Self::Output;
 }
 
+impl<F: Func<I>, I> Func<I> for &mut F {
+    type Output = F::Output;
+
+    fn call(&mut self, i: I) -> Self::Output {
+        (*self).call(i)
+    }
+}
+
 impl<F: Func<Head>, Head, Tail: HMappable<Poly<F>>> HMappable<Poly<F>> for HCons<Head, Tail> {
     type Output = HCons<<F as Func<Head>>::Output, <Tail as HMappable<Poly<F>>>::Output>;
 
