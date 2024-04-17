@@ -62,6 +62,21 @@ pub trait WithGeneric: Generic {
     fn for_each<F>(self, f: F)
     where
         Self::Repr: ForEach<F>;
+
+    /// Allows getting an iterator over the fields of a struct if they all have the same type
+    fn fields_into_iter<U>(self) -> impl Iterator<Item = U>
+    where
+        Self::Repr: MapToList<Identity, U>;
+}
+
+pub struct Identity;
+
+impl<T> Func<T> for Identity {
+    type Output = T;
+
+    fn call(&mut self, i: T) -> Self::Output {
+        i
+    }
 }
 
 impl<T: Generic> WithGeneric for T {
@@ -94,6 +109,13 @@ impl<T: Generic> WithGeneric for T {
         Self::Repr: ForEach<F>,
     {
         Generic::into(self).for_each(f)
+    }
+
+    fn fields_into_iter<U>(self) -> impl Iterator<Item = U>
+    where
+        Self::Repr: MapToList<Identity, U>,
+    {
+        self.map_to_list(Identity).into_iter()
     }
 }
 
