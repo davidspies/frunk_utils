@@ -1,4 +1,4 @@
-use std::{iter::FusedIterator, marker::PhantomData, mem::ManuallyDrop, ops::Range};
+use std::{iter::FusedIterator, marker::PhantomData, mem::ManuallyDrop, ops::Range, ptr};
 
 #[repr(C)]
 pub struct Cons<T, Tail>(T, Tail);
@@ -31,7 +31,7 @@ impl<T, Ts: ConsListT<T>> ConsListT<T> for Cons<T, Ts> {
 
     unsafe fn take_unchecked(&mut self, i: usize) -> T {
         debug_assert!(i < Self::LEN, "Index out of bounds");
-        let head = self as *mut Self;
+        let head = ptr::from_mut(self);
         let head = head.cast::<T>();
         let elem = head.add(i);
         std::ptr::read(elem)
