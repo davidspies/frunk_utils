@@ -255,4 +255,83 @@ mod tests {
         }
         assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 0);
     }
+
+    #[test]
+    fn as_slice_returns_correct_view() {
+        // [1, 2, 3]
+        let list = cons_list![1u8, 2, 3];
+
+        let slice = list.as_slice();
+        assert_eq!(slice, &[1, 2, 3], "slice contents mismatch");
+        assert_eq!(slice.len(), 3, "slice length mismatch");
+
+        // sanity-check contiguity with raw pointers
+        unsafe {
+            let base = slice.as_ptr();
+            assert_eq!(*base.add(0), 1);
+            assert_eq!(*base.add(1), 2);
+            assert_eq!(*base.add(2), 3);
+        }
+
+        // The list can still be consumed afterwards
+        let collected: Vec<_> = list.into_iter().collect();
+        assert_eq!(collected, vec![1, 2, 3], "iterator view after as_slice");
+    }
+
+    #[test]
+    fn as_mut_slice_allows_in_place_mutation() {
+        // [10, 20]
+        let mut list = cons_list![10i32, 20];
+
+        {
+            let slice = list.as_mut_slice();
+            assert_eq!(slice, &[10, 20], "initial slice contents");
+
+            // mutate through the slice
+            slice[0] = 11;
+            slice[1] = 22;
+        } // mutable borrow ends here
+
+        let collected: Vec<_> = list.into_iter().collect();
+        assert_eq!(collected, vec![11, 22], "mutation via as_mut_slice lost");
+    }
+
+    #[test]
+    fn round_trip_medium_list() {
+        // 16-element list: 0 … 15
+        let mut list = cons_list![0u16, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15];
+        let original: Vec<u16> = (0..16).collect();
+
+        // immutable slice view
+        let slice = list.as_slice();
+        assert_eq!(slice, &original[..], "as_slice view incorrect");
+
+        {
+            let slice_mut = list.as_mut_slice();
+            for (idx, elem) in slice_mut.iter_mut().enumerate() {
+                if idx % 2 == 0 {
+                    *elem += 1;
+                } else {
+                    *elem += 2;
+                }
+            }
+        }
+
+        // verify mutations propagated
+        let expected: Vec<u16> = original
+            .iter()
+            .enumerate()
+            .map(|(i, &v)| if i % 2 == 0 { v + 1 } else { v + 2 })
+            .collect();
+
+        let collected: Vec<_> = list.into_iter().collect();
+        assert_eq!(collected, expected, "round-trip medium list mismatch");
+    }
+
+    #[test]
+    fn empty_list_slice_is_empty() {
+        let list: ConsList<u8, Nil> = ConsList::nil();
+        let slice = list.as_slice();
+        assert!(slice.is_empty(), "Nil must yield an empty slice");
+    }
 }
