@@ -6,7 +6,9 @@ pub struct Cons<T, Tail>(T, Tail);
 #[repr(C)]
 pub struct Nil<T>(PhantomData<T>);
 
-pub trait ConsListT<T> {
+/// # Safety
+/// The memory layout must be compatible with the memory layout of a slice of `T`.
+pub unsafe trait ConsListT<T> {
     const LEN: usize;
 
     /// # Safety
@@ -16,9 +18,17 @@ pub trait ConsListT<T> {
     /// If this function is ever called, it must be called on every `i` exactly once and the list itself must not be
     /// dropped.
     unsafe fn take_unchecked(&mut self, i: usize) -> T;
+
+    fn as_slice(&self) -> &[T] {
+        unsafe { std::slice::from_raw_parts(ptr::from_ref(self).cast::<T>(), Self::LEN) }
+    }
+
+    fn as_mut_slice(&mut self) -> &mut [T] {
+        unsafe { std::slice::from_raw_parts_mut(ptr::from_mut(self).cast::<T>(), Self::LEN) }
+    }
 }
 
-impl<T> ConsListT<T> for Nil<T> {
+unsafe impl<T> ConsListT<T> for Nil<T> {
     const LEN: usize = 0;
 
     unsafe fn take_unchecked(&mut self, _: usize) -> T {
@@ -26,7 +36,7 @@ impl<T> ConsListT<T> for Nil<T> {
     }
 }
 
-impl<T, Ts: ConsListT<T>> ConsListT<T> for Cons<T, Ts> {
+unsafe impl<T, Ts: ConsListT<T>> ConsListT<T> for Cons<T, Ts> {
     const LEN: usize = 1 + Ts::LEN;
 
     unsafe fn take_unchecked(&mut self, i: usize) -> T {
