@@ -54,7 +54,7 @@ pub struct ConsList<T, Ts: ConsListT<T>> {
 }
 
 impl<T> ConsList<T, Nil> {
-    pub fn nil() -> ConsList<T, Nil> {
+    pub fn nil() -> Self {
         Self {
             list: Nil,
             marker: PhantomData,
@@ -63,7 +63,7 @@ impl<T> ConsList<T, Nil> {
 }
 
 impl<T, Ts: ConsListT<T>> ConsList<T, Cons<T, Ts>> {
-    pub fn cons(head: T, tail: ConsList<T, Ts>) -> ConsList<T, Cons<T, Ts>> {
+    pub fn cons(head: T, tail: ConsList<T, Ts>) -> Self {
         let ConsList { list: tail, marker } = tail;
         ConsList {
             list: Cons(head, tail),
