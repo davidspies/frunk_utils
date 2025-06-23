@@ -7,15 +7,10 @@ description = "Utilities for working with frunk."
 license = "MIT"
 documentation = "https://docs.rs/frunk_utils"
 repository = "https://github.com/davidspies/frunk_utils"
-keywords = [
-    "frunk",
-    "functional",
-    "utils",
-    "hlist",
-    "types",
-]
+keywords = ["frunk", "functional", "utils", "hlist", "types"]
 
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
 frunk = "0.4"
+futures = "0.3.31"
