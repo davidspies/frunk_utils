@@ -4,7 +4,7 @@ use std::{iter::FusedIterator, marker::PhantomData, mem::ManuallyDrop, ops::Rang
 pub struct Cons<T, Tail>(T, Tail);
 
 #[repr(C)]
-pub struct Nil<T>(PhantomData<T>);
+pub struct Nil;
 
 /// # Safety
 /// The memory layout must be compatible with the memory layout of a slice of `T`.
@@ -28,7 +28,7 @@ pub unsafe trait ConsListT<T> {
     }
 }
 
-unsafe impl<T> ConsListT<T> for Nil<T> {
+unsafe impl<T> ConsListT<T> for Nil {
     const LEN: usize = 0;
 
     unsafe fn take_unchecked(&mut self, _: usize) -> T {
@@ -53,10 +53,10 @@ pub struct ConsList<T, Ts: ConsListT<T>> {
     marker: PhantomData<T>,
 }
 
-impl<T> ConsList<T, Nil<T>> {
-    pub fn nil() -> ConsList<T, Nil<T>> {
+impl<T> ConsList<T, Nil> {
+    pub fn nil() -> ConsList<T, Nil> {
         Self {
-            list: Nil(PhantomData),
+            list: Nil,
             marker: PhantomData,
         }
     }

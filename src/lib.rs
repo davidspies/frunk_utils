@@ -190,7 +190,7 @@ pub trait MapToList<F, U>: HList {
 }
 
 impl<F, U> MapToList<F, U> for HNil {
-    type Output = cons_list::Nil<U>;
+    type Output = cons_list::Nil;
 
     fn map_to_list(self, _f: F) -> ConsList<U, Self::Output> {
         ConsList::nil()
