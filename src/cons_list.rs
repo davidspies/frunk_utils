@@ -6,6 +6,21 @@ pub struct Cons<T, Tail>(T, Tail);
 #[repr(C)]
 pub struct Nil;
 
+/// Recursively expands to nested `ConsList::cons(…)` calls.
+///
+/// ```ignore
+/// let list = cons_list![1, 2, 3];
+/// // expands to:
+/// // ConsList::cons(1, ConsList::cons(2, ConsList::cons(3, ConsList::nil())))
+/// ```
+#[macro_export]
+macro_rules! cons_list {
+    () => { ConsList::nil() };
+    ($head:expr $(, $tail:expr)* $(,)?) => {
+        ConsList::cons($head, cons_list![$($tail),*])
+    };
+}
+
 /// # Safety
 /// The memory layout must be compatible with the memory layout of a slice of `T`.
 pub unsafe trait ConsListT<T> {
@@ -69,6 +84,16 @@ impl<T, Ts: ConsListT<T>> ConsList<T, Cons<T, Ts>> {
             list: Cons(head, tail),
             marker,
         }
+    }
+}
+
+impl<T, Ts: ConsListT<T>> ConsList<T, Ts> {
+    pub fn as_slice(&self) -> &[T] {
+        self.list.as_slice()
+    }
+
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
+        self.list.as_mut_slice()
     }
 }
 
@@ -147,13 +172,13 @@ mod tests {
 
     #[test]
     fn full_consume() {
-        let list = ConsList::cons(1, ConsList::cons(2, ConsList::cons(3, ConsList::nil())));
+        let list = cons_list![1, 2, 3];
         assert_eq!(list.into_iter().collect::<Vec<_>>(), vec![1, 2, 3]);
     }
 
     #[test]
     fn partial_consume() {
-        let list = ConsList::cons(1, ConsList::cons(2, ConsList::cons(3, ConsList::nil())));
+        let list = cons_list![1, 2, 3];
         let mut iter = list.into_iter();
         assert_eq!(iter.next(), Some(1));
         drop(iter);
@@ -195,13 +220,7 @@ mod tests {
         }
 
         {
-            let bombs = ConsList::cons(
-                Bomb::default(),
-                ConsList::cons(
-                    Bomb::default(),
-                    ConsList::cons(Bomb::default(), ConsList::nil()),
-                ),
-            );
+            let bombs = cons_list![Bomb::default(), Bomb::default(), Bomb::default()];
             let mut bombs = bombs.into_iter().collect::<Vec<_>>();
             for bomb in &mut bombs {
                 bomb.disarm();
@@ -210,13 +229,7 @@ mod tests {
         assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 0);
 
         {
-            let list = ConsList::cons(
-                Bomb::default(),
-                ConsList::cons(
-                    Bomb::default(),
-                    ConsList::cons(Bomb::default(), ConsList::nil()),
-                ),
-            );
+            let list = cons_list![Bomb::default(), Bomb::default(), Bomb::default()];
             assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 3);
             let mut bombs = list.into_iter();
             bombs.next().unwrap().disarm();
@@ -228,13 +241,7 @@ mod tests {
         assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 0);
 
         {
-            let list = ConsList::cons(
-                Bomb::default(),
-                ConsList::cons(
-                    Bomb::inert(),
-                    ConsList::cons(Bomb::inert(), ConsList::nil()),
-                ),
-            );
+            let list = cons_list![Bomb::default(), Bomb::inert(), Bomb::inert()];
             assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 3);
             let mut bombs = list.into_iter();
             bombs.next().unwrap().disarm();
@@ -243,13 +250,7 @@ mod tests {
         assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 0);
 
         {
-            let _list = ConsList::cons(
-                Bomb::inert(),
-                ConsList::cons(
-                    Bomb::inert(),
-                    ConsList::cons(Bomb::inert(), ConsList::nil()),
-                ),
-            );
+            let _list = cons_list![Bomb::inert(), Bomb::inert(), Bomb::inert()];
             assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 3);
         }
         assert_eq!(NUM_ALLOC.load(Ordering::SeqCst), 0);
