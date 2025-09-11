@@ -55,6 +55,19 @@ pub trait WithGeneric: Generic {
     where
         Self::Repr: HZippable<U::Repr>;
 
+    fn hzip_with<
+        F,
+        U: Generic,
+        TU: Generic<Repr = <<Self::Repr as HZippable<U::Repr>>::Zipped as HMappable<Poly<F>>>::Output>,
+    >(
+        self,
+        other: U,
+        f: F,
+    ) -> TU
+    where
+        Self::Repr: HZippable<U::Repr>,
+        <Self::Repr as HZippable<U::Repr>>::Zipped: HMappable<Poly<F>>;
+
     fn map_to_list<F, U>(self, f: F) -> ConsList<U, <Self::Repr as MapToList<F, U>>::Output>
     where
         Self::Repr: MapToList<F, U>;
@@ -95,6 +108,22 @@ impl<T: Generic> WithGeneric for T {
         Self::Repr: HZippable<U::Repr>,
     {
         Generic::from(Generic::into(self).zip(Generic::into(other)))
+    }
+
+    fn hzip_with<
+        F,
+        U: Generic,
+        TU: Generic<Repr = <<Self::Repr as HZippable<U::Repr>>::Zipped as HMappable<Poly<F>>>::Output>,
+    >(
+        self,
+        other: U,
+        f: F,
+    ) -> TU
+    where
+        Self::Repr: HZippable<U::Repr>,
+        <Self::Repr as HZippable<U::Repr>>::Zipped: HMappable<Poly<F>>,
+    {
+        Generic::from(Generic::into(self).zip(Generic::into(other)).map(Poly(f)))
     }
 
     fn map_to_list<F, U>(self, f: F) -> ConsList<U, <Self::Repr as MapToList<F, U>>::Output>
