@@ -90,7 +90,7 @@ impl<S: Add<T>, T: Clone> Func<S> for AddOffset<T> {
 #[macro_export]
 macro_rules! impl_add_offset {
     ($(@($($params:tt)+):)? $l:ty , $r:ty => $o:ty $(where $($bounds:tt)+)?) => {
-        impl $(<$($params)+>)? Add<$r> for $l
+        impl $(<$($params)+>)? std::ops::Add<$r> for $l
         $(where $($bounds)+)?
         {
             type Output = $o;
@@ -115,7 +115,7 @@ impl<S: AddAssign<T>, T: Clone> Func<&mut S> for AddAssignOffset<T> {
 #[macro_export]
 macro_rules! impl_add_assign_offset {
     ($(@($($params:tt)+):)? $l:ty , $r:ty $(where $($bounds:tt)+)?) => {
-        impl $(<$($params)+>)? AddAssign<$r> for $l
+        impl $(<$($params)+>)? std::ops::AddAssign<$r> for $l
         $(where $($bounds)+)?
         {
             fn add_assign(&mut self, rhs: $r) {
@@ -188,7 +188,7 @@ impl<S: Sub<T>, T: Clone> Func<S> for SubOffset<T> {
 #[macro_export]
 macro_rules! impl_sub_offset {
     ($(@($($params:tt)+):)? $l:ty , $r:ty => $o:ty $(where $($bounds:tt)+)?) => {
-        impl $(<$($params)+>)? Sub<$r> for $l
+        impl $(<$($params)+>)? std::ops::Sub<$r> for $l
         $(where $($bounds)+)?
         {
             type Output = $o;
@@ -213,7 +213,7 @@ impl<S: SubAssign<T>, T: Clone> Func<&mut S> for SubAssignOffset<T> {
 #[macro_export]
 macro_rules! impl_sub_assign_offset {
     ($(@($($params:tt)+):)? $l:ty , $r:ty $(where $($bounds:tt)+)?) => {
-        impl $(<$($params)+>)? SubAssign<$r> for $l
+        impl $(<$($params)+>)? std::ops::SubAssign<$r> for $l
         $(where $($bounds)+)?
         {
             fn sub_assign(&mut self, rhs: $r) {
@@ -286,7 +286,7 @@ impl<S: Mul<T>, T: Clone> Func<S> for MulScalar<T> {
 #[macro_export]
 macro_rules! impl_mul_scalar {
     ($(@($($params:tt)+):)? $l:ty , $r:ty => $o:ty $(where $($bounds:tt)+)?) => {
-        impl $(<$($params)+>)? Mul<$r> for $l
+        impl $(<$($params)+>)? std::ops::Mul<$r> for $l
         $(where $($bounds)+)?
         {
             type Output = $o;
@@ -311,7 +311,7 @@ impl<S: MulAssign<T>, T: Clone> Func<&mut S> for MulAssignScalar<T> {
 #[macro_export]
 macro_rules! impl_mul_assign_scalar {
     ($(@($($params:tt)+):)? $l:ty , $r:ty $(where $($bounds:tt)+)?) => {
-        impl $(<$($params)+>)? MulAssign<$r> for $l
+        impl $(<$($params)+>)? std::ops::MulAssign<$r> for $l
         $(where $($bounds)+)?
         {
             fn mul_assign(&mut self, rhs: $r) {
@@ -384,7 +384,7 @@ impl<S: Div<T>, T: Clone> Func<S> for DivScalar<T> {
 #[macro_export]
 macro_rules! impl_div_scalar {
     ($(@($($params:tt)+):)? $l:ty , $r:ty => $o:ty $(where $($bounds:tt)+)?) => {
-        impl $(<$($params)+>)? Div<$r> for $l
+        impl $(<$($params)+>)? std::ops::Div<$r> for $l
         $(where $($bounds)+)?
         {
             type Output = $o;
@@ -409,7 +409,7 @@ impl<S: DivAssign<T>, T: Clone> Func<&mut S> for DivAssignScalar<T> {
 #[macro_export]
 macro_rules! impl_div_assign_scalar {
     ($(@($($params:tt)+):)? $l:ty , $r:ty $(where $($bounds:tt)+)?) => {
-        impl $(<$($params)+>)? DivAssign<$r> for $l
+        impl $(<$($params)+>)? std::ops::DivAssign<$r> for $l
         $(where $($bounds)+)?
         {
             fn div_assign(&mut self, rhs: $r) {
@@ -482,7 +482,7 @@ impl<S: Rem<T>, T: Clone> Func<S> for RemScalar<T> {
 #[macro_export]
 macro_rules! impl_rem_scalar {
     ($(@($($params:tt)+):)? $l:ty , $r:ty => $o:ty $(where $($bounds:tt)+)?) => {
-        impl $(<$($params)+>)? Rem<$r> for $l
+        impl $(<$($params)+>)? std::ops::Rem<$r> for $l
         $(where $($bounds)+)?
         {
             type Output = $o;
@@ -507,7 +507,7 @@ impl<S: RemAssign<T>, T: Clone> Func<&mut S> for RemAssignScalar<T> {
 #[macro_export]
 macro_rules! impl_rem_assign_scalar {
     ($(@($($params:tt)+):)? $l:ty , $r:ty $(where $($bounds:tt)+)?) => {
-        impl $(<$($params)+>)? RemAssign<$r> for $l
+        impl $(<$($params)+>)? std::ops::RemAssign<$r> for $l
         $(where $($bounds)+)?
         {
             fn rem_assign(&mut self, rhs: $r) {
