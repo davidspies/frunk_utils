@@ -68,9 +68,23 @@ pub trait WithGeneric: Generic {
         Self::Repr: HZippable<U::Repr>,
         <Self::Repr as HZippable<U::Repr>>::Zipped: HMappable<Poly<F>>;
 
-    fn map_to_list<F, U>(self, f: F) -> ConsList<U, <Self::Repr as MapToList<F, U>>::Output>
+    fn hzipped_for_each<F, U: Generic>(self, other: U, f: F)
     where
-        Self::Repr: MapToList<F, U>;
+        Self::Repr: HZippable<U::Repr>,
+        <Self::Repr as HZippable<U::Repr>>::Zipped: ForEach<F>;
+
+    fn hzip_to_list<F, U: Generic, O>(
+        self,
+        other: U,
+        f: F,
+    ) -> ConsList<O, <<Self::Repr as HZippable<U::Repr>>::Zipped as MapToList<F, O>>::Output>
+    where
+        Self::Repr: HZippable<U::Repr>,
+        <Self::Repr as HZippable<U::Repr>>::Zipped: MapToList<F, O>;
+
+    fn map_to_list<F, O>(self, f: F) -> ConsList<O, <Self::Repr as MapToList<F, O>>::Output>
+    where
+        Self::Repr: MapToList<F, O>;
 
     fn for_each<F>(self, f: F)
     where
@@ -126,9 +140,29 @@ impl<T: Generic> WithGeneric for T {
         Generic::from(Generic::into(self).zip(Generic::into(other)).map(Poly(f)))
     }
 
-    fn map_to_list<F, U>(self, f: F) -> ConsList<U, <Self::Repr as MapToList<F, U>>::Output>
+    fn hzipped_for_each<F, U: Generic>(self, other: U, f: F)
     where
-        Self::Repr: MapToList<F, U>,
+        Self::Repr: HZippable<U::Repr>,
+        <Self::Repr as HZippable<U::Repr>>::Zipped: ForEach<F>,
+    {
+        Generic::into(self).zip(Generic::into(other)).for_each(f);
+    }
+
+    fn hzip_to_list<F, U: Generic, O>(
+        self,
+        other: U,
+        f: F,
+    ) -> ConsList<O, <<Self::Repr as HZippable<U::Repr>>::Zipped as MapToList<F, O>>::Output>
+    where
+        Self::Repr: HZippable<U::Repr>,
+        <Self::Repr as HZippable<U::Repr>>::Zipped: MapToList<F, O>,
+    {
+        Generic::into(self).zip(Generic::into(other)).map_to_list(f)
+    }
+
+    fn map_to_list<F, O>(self, f: F) -> ConsList<O, <Self::Repr as MapToList<F, O>>::Output>
+    where
+        Self::Repr: MapToList<F, O>,
     {
         Generic::into(self).map_to_list(f)
     }
