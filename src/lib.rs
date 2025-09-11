@@ -8,6 +8,7 @@ use frunk::{
 
 pub use self::cons_list::{ConsList, ConsListT};
 
+pub mod arithmetic_macros;
 pub mod cons_list;
 
 /// The Func trait from frunk doesn't take `self` as a parameter to `call` so there isn't an easy way to get context
