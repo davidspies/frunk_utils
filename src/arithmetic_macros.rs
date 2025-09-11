@@ -78,7 +78,7 @@ macro_rules! impl_add_assign {
     };
 }
 
-pub struct AddOffset<T>(T);
+pub struct AddOffset<T>(pub T);
 impl<S: Add<T>, T: Clone> Func<S> for AddOffset<T> {
     type Output = S::Output;
 
@@ -103,7 +103,7 @@ macro_rules! impl_add_offset {
     };
 }
 
-pub struct AddAssignOffset<T>(T);
+pub struct AddAssignOffset<T>(pub T);
 impl<S: AddAssign<T>, T: Clone> Func<&mut S> for AddAssignOffset<T> {
     type Output = ();
 
@@ -176,7 +176,7 @@ macro_rules! impl_sub_assign {
     };
 }
 
-pub struct SubOffset<T>(T);
+pub struct SubOffset<T>(pub T);
 impl<S: Sub<T>, T: Clone> Func<S> for SubOffset<T> {
     type Output = S::Output;
 
@@ -201,7 +201,7 @@ macro_rules! impl_sub_offset {
     };
 }
 
-pub struct SubAssignOffset<T>(T);
+pub struct SubAssignOffset<T>(pub T);
 impl<S: SubAssign<T>, T: Clone> Func<&mut S> for SubAssignOffset<T> {
     type Output = ();
 
@@ -274,7 +274,7 @@ macro_rules! impl_mul_assign {
     };
 }
 
-pub struct MulScalar<T>(T);
+pub struct MulScalar<T>(pub T);
 impl<S: Mul<T>, T: Clone> Func<S> for MulScalar<T> {
     type Output = S::Output;
 
@@ -299,7 +299,7 @@ macro_rules! impl_mul_scalar {
     };
 }
 
-pub struct MulAssignScalar<T>(T);
+pub struct MulAssignScalar<T>(pub T);
 impl<S: MulAssign<T>, T: Clone> Func<&mut S> for MulAssignScalar<T> {
     type Output = ();
 
@@ -372,7 +372,7 @@ macro_rules! impl_div_assign {
     };
 }
 
-pub struct DivScalar<T>(T);
+pub struct DivScalar<T>(pub T);
 impl<S: Div<T>, T: Clone> Func<S> for DivScalar<T> {
     type Output = S::Output;
 
@@ -397,7 +397,7 @@ macro_rules! impl_div_scalar {
     };
 }
 
-pub struct DivAssignScalar<T>(T);
+pub struct DivAssignScalar<T>(pub T);
 impl<S: DivAssign<T>, T: Clone> Func<&mut S> for DivAssignScalar<T> {
     type Output = ();
 
@@ -470,7 +470,7 @@ macro_rules! impl_rem_assign {
     };
 }
 
-pub struct RemScalar<T>(T);
+pub struct RemScalar<T>(pub T);
 impl<S: Rem<T>, T: Clone> Func<S> for RemScalar<T> {
     type Output = S::Output;
 
@@ -495,7 +495,7 @@ macro_rules! impl_rem_scalar {
     };
 }
 
-pub struct RemAssignScalar<T>(T);
+pub struct RemAssignScalar<T>(pub T);
 impl<S: RemAssign<T>, T: Clone> Func<&mut S> for RemAssignScalar<T> {
     type Output = ();
 
