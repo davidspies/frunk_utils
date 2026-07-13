@@ -1,7 +1,7 @@
 [package]
 name = "frunk_utils"
 authors = ["David Spies <dnspies@gmail.com>"]
-version = "0.2.7"
+version = "0.2.8"
 edition = "2021"
 description = "Utilities for working with frunk."
 license = "MIT"
@@ -10,4 +10,4 @@ repository = "https://github.com/davidspies/frunk_utils"
 keywords = ["frunk", "functional", "utils", "hlist", "types"]
 
 [dependencies]
-frunk = "0.4"
+frunk = ">=0.4, <0.6"
